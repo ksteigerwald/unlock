@@ -3,22 +3,15 @@ import { WalletService } from '@unlock-protocol/unlock-js'
 import { WalletServiceContext } from '../utils/withWalletService'
 import { ConfigContext } from '../utils/withConfig'
 import { UserMetadata } from '../unlockTypes'
-
-interface Config {
-  services: {
-    storage: {
-      host: string
-    }
-  }
-}
+import { AuthenticationContext } from '../components/interface/Authenticate'
 
 export const useSetUserMetadata = () => {
+  const { account } = useContext(AuthenticationContext)
   const walletService: WalletService = useContext(WalletServiceContext)
-  const config: Config = useContext(ConfigContext)
-
+  const config: any = useContext(ConfigContext)
   const setUserMetadata = (
     lockAddress: string,
-    userAddress: string,
+    network: number,
     metadata: UserMetadata,
     callback: (error: Error, saved: boolean) => void
   ) => {
@@ -26,13 +19,14 @@ export const useSetUserMetadata = () => {
       walletService.setUserMetadata(
         {
           lockAddress,
-          userAddress,
+          userAddress: account,
           metadata,
-          locksmithHost: config.services.storage.host,
+          locksmithHost: config.networks[network].locksmith,
         },
         callback
       )
     } catch (error) {
+      console.log(error)
       callback(
         new Error(
           'There was an error which prevented your data from being saved.'

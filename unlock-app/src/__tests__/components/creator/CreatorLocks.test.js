@@ -1,23 +1,23 @@
 import React from 'react'
 import * as rtl from '@testing-library/react'
-import { Provider } from 'react-redux'
 import hook from '../../../hooks/useLocks'
 
-import {
-  CreatorLocks,
-  mapStateToProps,
-} from '../../../components/creator/CreatorLocks'
-import createUnlockStore from '../../../createUnlockStore'
-import configure from '../../../config'
+import { CreatorLocks } from '../../../components/creator/CreatorLocks'
 import { ConfigContext } from '../../../utils/withConfig'
+import { AuthenticationContext } from '../../../components/interface/Authenticate'
 
 jest.mock('../../../hooks/useLocks', () => {
   return {
-    useLocks: jest.fn(() => [false, mockLocks]),
+    useLocks: jest.fn(() => {
+      return {
+        loading: false,
+        locks: mockLocks,
+        addLock: () => {},
+        error: null,
+      }
+    }),
   }
 })
-
-const config = configure()
 
 const ConfigProvider = ConfigContext.Provider
 
@@ -72,102 +72,56 @@ const mockLocks = {
   },
 }
 
-const account = {
-  address: '0x12345678',
-  balance: '5',
-}
+const account = '0x12345678'
 
 describe('CreatorLocks', () => {
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
-  it('should call createLock when submit button is pressed', () => {
-    expect.assertions(2)
-    const createLock = jest.fn((lock, callback) => callback())
-    const hideForm = jest.fn()
-
-    const store = createUnlockStore({
-      account,
-    })
-
-    const wrapper = rtl.render(
-      <ConfigProvider value={config}>
-        <Provider store={store}>
-          <CreatorLocks
-            account={account}
-            createLock={createLock}
-            formIsVisible
-            hideForm={hideForm}
-          />
-        </Provider>
-      </ConfigProvider>
-    )
-
-    const submitButton = wrapper.getByText('Submit')
-    rtl.fireEvent.click(submitButton)
-
-    expect(createLock).toHaveBeenCalled()
-    expect(hideForm).toHaveBeenCalled()
-  })
-
   it('should show a message indicating that no lock has been created when no lock is there', () => {
     expect.assertions(1)
-    hook.useLocks = jest.fn(() => [false, []])
-    const store = createUnlockStore()
+    hook.useLocks = jest.fn(() => {
+      return {
+        loading: false,
+        locks: [],
+        addLock: () => {},
+        error: null,
+      }
+    })
     const loading = false
     const wrapper = rtl.render(
-      <Provider store={store}>
-        <CreatorLocks
-          account={account}
-          loading={loading}
-          createLock={() => {}}
-          formIsVisible={false}
-          hideForm={() => {}}
-        />
-      </Provider>
+      <CreatorLocks
+        account={account}
+        loading={loading}
+        createLock={() => {}}
+        formIsVisible={false}
+        hideForm={() => {}}
+      />
     )
     expect(wrapper.getByText('Create a lock to get started')).not.toBeNull()
   })
 
   it('should show the loading icon when locks are being loaded', () => {
     expect.assertions(1)
-    hook.useLocks = jest.fn(() => [true, []])
-    const store = createUnlockStore()
+    hook.useLocks = jest.fn(() => {
+      return {
+        loading: true,
+        locks: mockLocks,
+        addLock: () => {},
+        error: null,
+      }
+    })
     const loading = true
     const wrapper = rtl.render(
-      <Provider store={store}>
-        <CreatorLocks
-          account={account}
-          loading={loading}
-          createLock={() => {}}
-          formIsVisible={false}
-          hideForm={() => {}}
-        />
-      </Provider>
+      <CreatorLocks
+        account={account}
+        loading={loading}
+        createLock={() => {}}
+        formIsVisible={false}
+        hideForm={() => {}}
+      />
     )
     expect(wrapper.getByText('loading')).not.toBeNull()
-  })
-
-  describe('mapStateToProps', () => {
-    it('should yield a formIsVisible boolean based on state for lockFormStatus', () => {
-      expect.assertions(2)
-      expect(
-        mapStateToProps({
-          account,
-          lockFormStatus: {
-            visible: true,
-          },
-        }).formIsVisible
-      ).toBe(true)
-      expect(
-        mapStateToProps({
-          account,
-          lockFormStatus: {
-            visible: false,
-          },
-        }).formIsVisible
-      ).toBe(false)
-    })
   })
 })

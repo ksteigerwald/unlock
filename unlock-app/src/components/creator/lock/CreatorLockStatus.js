@@ -1,35 +1,40 @@
 import PropTypes from 'prop-types'
-import React from 'react'
+import React, { useContext } from 'react'
 import styled from 'styled-components'
 import UnlockPropTypes from '../../../propTypes'
-import withConfig from '../../../utils/withConfig'
+import withConfig, { ConfigContext } from '../../../utils/withConfig'
 
-export function CreatorLockStatus({ config, hash, status, confirmations }) {
+import { AuthenticationContext } from '../../interface/Authenticate'
+
+export function CreatorLockStatus({ hash, confirmations }) {
+  const config = useContext(ConfigContext)
+  const { network } = useContext(AuthenticationContext)
+  let status = 'Submitted'
+  if (confirmations > 0) {
+    status = 'Confirming'
+  }
+
   return (
     <LockStatus
       target="_blank"
       rel="noopener noreferrer"
-      href={config.chainExplorerUrlBuilders.etherscan(`/tx/${hash}`)}
+      href={config.networks[network].explorer.urls.transaction(hash)}
     >
       <Status>{status}</Status>
       <Confirmations>
-        {status === 'Confirming' &&
-          confirmations >= 0 &&
-          config.requiredConfirmations >= confirmations && (
-            <>
-              {confirmations} / {config.requiredConfirmations}
-            </>
-          )}
+        {confirmations > 0 && config.requiredConfirmations >= confirmations && (
+          <>
+            {confirmations} / {config.requiredConfirmations}
+          </>
+        )}
       </Confirmations>
     </LockStatus>
   )
 }
 
 CreatorLockStatus.propTypes = {
-  status: PropTypes.string.isRequired,
   hash: PropTypes.string.isRequired,
   confirmations: PropTypes.number,
-  config: UnlockPropTypes.configuration.isRequired,
 }
 
 CreatorLockStatus.defaultProps = {

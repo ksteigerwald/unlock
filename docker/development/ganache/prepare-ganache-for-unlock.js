@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 
 const { WalletService, latest } = require('@unlock-protocol/unlock-js')
+const ethers = require('ethers')
 const { AddressZero } = require('ethers/constants')
 const serverIsUp = require('./utils/serverIsUp')
 const Erc1820 = require('./deploy-erc1820')
@@ -42,11 +43,13 @@ const log = (message) => {
 serverIsUp(host, port, 1000 /* every second */, 120 /* up to 2 minutes */)
   .then(async () => {
     // Instantiate the walletService
-    const walletService = new WalletService({})
+    const walletService = new WalletService()
 
     // We connect to a local node and we expect the node to have unlocked accounts
     // which can be used to send transactions
-    await walletService.connect(providerURL)
+    await walletService.connect(
+      new ethers.providers.JsonRpcProvider(providerURL)
+    )
 
     // Let's transfer some Eth to users
     await Promise.all(

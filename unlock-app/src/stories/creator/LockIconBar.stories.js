@@ -1,17 +1,12 @@
 import React from 'react'
 import { storiesOf } from '@storybook/react'
 import { action } from '@storybook/addon-actions'
-import { Provider } from 'react-redux'
 import { TransactionType } from '../../unlockTypes'
 import LockIconBar from '../../components/creator/lock/LockIconBar'
-import createUnlockStore from '../../createUnlockStore'
 import { ConfigContext } from '../../utils/withConfig'
 
 const config = {
   requiredConfirmations: 12,
-  chainExplorerUrlBuilders: {
-    etherscan: () => {},
-  },
 }
 
 const transactions = {
@@ -95,16 +90,12 @@ const transactions = {
     type: TransactionType.WITHDRAWAL,
   },
 }
-
-const store = createUnlockStore({ transactions })
-
 const ConfigProvider = ConfigContext.Provider
 
 storiesOf('LockIconBar', module)
   .addDecorator((getStory) => (
     <ConfigProvider value={config}>{getStory()}</ConfigProvider>
   ))
-  .addDecorator((getStory) => <Provider store={store}>{getStory()}</Provider>)
   .add('LockIconBar, no blocking transaction', () => {
     const lock = {
       address: '0xnoTransaction',
@@ -120,7 +111,6 @@ storiesOf('LockIconBar', module)
   .add('LockIconBar, pending lock creation transaction', () => {
     const lock = {
       address: '0xpendingLock',
-      creationTransaction: transactions['0xpending'],
     }
     return (
       <LockIconBar
@@ -133,7 +123,6 @@ storiesOf('LockIconBar', module)
   .add('LockIconBar, submitted transaction', () => {
     const lock = {
       address: '0xsubmittedLock',
-      creationTransaction: transactions['0xsubmitted'],
     }
     return (
       <LockIconBar
@@ -146,7 +135,6 @@ storiesOf('LockIconBar', module)
   .add('LockIconBar, confirming transaction', () => {
     const lock = {
       address: '0xconfirmingLock',
-      creationTransaction: transactions['0xconfirming'],
     }
     return (
       <LockIconBar
@@ -159,7 +147,6 @@ storiesOf('LockIconBar', module)
   .add('LockIconBar, mined transaction', () => {
     const lock = {
       address: '0xmined',
-      creationTransaction: transactions['0xmined'],
     }
     return (
       <LockIconBar
@@ -172,7 +159,6 @@ storiesOf('LockIconBar', module)
   .add('LockIconBar, pending price change transaction', () => {
     const lock = {
       address: '0xpendingPriceChangeLock',
-      priceUpdateTransaction: transactions['0xpendingPriceChange'],
     }
     return (
       <LockIconBar
@@ -185,7 +171,6 @@ storiesOf('LockIconBar', module)
   .add('LockIconBar, submitted price change transaction', () => {
     const lock = {
       address: '0xsubmittedPriceChangeLock',
-      priceUpdateTransaction: transactions['0xsubmittedPriceChange'],
     }
     return (
       <LockIconBar
@@ -198,7 +183,6 @@ storiesOf('LockIconBar', module)
   .add('LockIconBar, confirming price change transaction', () => {
     const lock = {
       address: '0xconfirmingPriceChangeLock',
-      priceUpdateTransaction: transactions['0xconfirmingPriceChange'],
     }
     return (
       <LockIconBar
@@ -211,7 +195,6 @@ storiesOf('LockIconBar', module)
   .add('LockIconBar, mined price change transaction', () => {
     const lock = {
       address: '0xmined',
-      priceUpdateTransaction: transactions['0xminedPriceChange'],
     }
     return (
       <LockIconBar

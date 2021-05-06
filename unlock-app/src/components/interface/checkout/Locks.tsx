@@ -1,68 +1,108 @@
-import React from 'react'
+import React, { useContext, useState, useEffect } from 'react'
+import styled from 'styled-components'
 import { Lock } from './Lock'
 import { LoadingLock } from './LockVariations'
-import { usePaywallLocks } from '../../../hooks/usePaywallLocks'
-import { useGetTokenBalance } from '../../../hooks/useGetTokenBalance'
 import { TransactionInfo } from '../../../hooks/useCheckoutCommunication'
-import { useKeyOwnershipStatus } from '../../../hooks/useKeyOwnershipStatus'
-import { PaywallConfig } from '../../../unlockTypes'
+import { Web3ServiceContext } from '../../../utils/withWeb3Service'
+
+interface LoadLockProps {
+  address: string
+  emitTransactionInfo: (info: TransactionInfo) => void
+  activePayment: string
+  setFocus: (address: string) => void
+  network: number
+  handleFiatAvailable: () => void
+  setHasMembership: (state: boolean) => void
+}
+
+const LoadLock = ({
+  address,
+  setFocus,
+  emitTransactionInfo,
+  activePayment,
+  network,
+  handleFiatAvailable,
+  setHasMembership,
+}: LoadLockProps) => {
+  const web3Service = useContext(Web3ServiceContext)
+  const [loading, setLoading] = useState(true)
+  const [lock, setLock] = useState({})
+
+  useEffect(() => {
+    const loadLock = async () => {
+      const lockDetails = await web3Service.getLock(address, network)
+      setLock({
+        address,
+        ...lockDetails,
+      })
+      setLoading(false)
+    }
+    if (web3Service) {
+      loadLock()
+    }
+  }, [address, web3Service])
+
+  if (loading || !web3Service) {
+    return <LoadingLock address={address} network={network} />
+  }
+  return (
+    <Lock
+      network={network}
+      handleFiatAvailable={handleFiatAvailable}
+      setFocus={setFocus}
+      lock={lock}
+      emitTransactionInfo={emitTransactionInfo}
+      activePayment={activePayment}
+      setHasMembership={setHasMembership}
+    />
+  )
+}
 
 interface LocksProps {
-  accountAddress: string
   lockAddresses: string[]
   emitTransactionInfo: (info: TransactionInfo) => void
-  metadataRequired?: boolean
-  showMetadataForm: () => void
-  config: PaywallConfig
+  activePayment: string
+  setFocus: (address: string) => void
+  focus: string
+  network: number
+  handleFiatAvailable: () => void
+  setHasMembership: (state: boolean) => void
 }
 
 export const Locks = ({
+  network,
   lockAddresses,
-  accountAddress,
   emitTransactionInfo,
-  metadataRequired,
-  showMetadataForm,
-  config,
+  activePayment,
+  setFocus,
+  focus,
+  handleFiatAvailable,
+  setHasMembership,
 }: LocksProps) => {
-  const { getTokenBalance, balances } = useGetTokenBalance(accountAddress)
-  const { locks, loading } = usePaywallLocks(
-    lockAddresses,
-    getTokenBalance,
-    config
-  )
-  const { keys } = useKeyOwnershipStatus(lockAddresses, accountAddress)
-
-  const now = new Date().getTime() / 1000
-  const activeKeys = keys.filter((key) => key.expiration > now)
-
-  if (loading) {
-    return (
-      <div>
-        {lockAddresses.map((address) => (
-          <LoadingLock address={address} key={address} />
-        ))}
-      </div>
-    )
-  }
-
   return (
-    <div>
-      {locks.map((lock) => (
-        <Lock
-          key={lock.address}
-          lock={lock}
-          emitTransactionInfo={emitTransactionInfo}
-          balances={balances}
-          activeKeys={activeKeys}
-          accountAddress={accountAddress}
-          metadataRequired={metadataRequired}
-          showMetadataForm={showMetadataForm}
-        />
-      ))}
-    </div>
+    <Wrapper>
+      {lockAddresses.map((address) => {
+        if (!focus || focus === address) {
+          return (
+            <LoadLock
+              handleFiatAvailable={handleFiatAvailable}
+              setHasMembership={setHasMembership}
+              network={network}
+              setFocus={setFocus}
+              key={address}
+              address={address}
+              emitTransactionInfo={emitTransactionInfo}
+              activePayment={activePayment}
+            />
+          )
+        }
+      })}
+    </Wrapper>
   )
 }
 
-Locks.defaultProps = {
-  metadataRequired: false,
-}
+Locks.defaultProps = {}
+
+const Wrapper = styled.div`
+  margin-bottom: 24px;
+`

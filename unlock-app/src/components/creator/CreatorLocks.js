@@ -1,16 +1,15 @@
-import React from 'react'
+import React, { useContext } from 'react'
 import styled from 'styled-components'
-import { connect } from 'react-redux'
 import PropTypes from 'prop-types'
 
 import UnlockPropTypes from '../../propTypes'
+import { AuthenticationContext } from '../interface/Authenticate'
+
 import CreatorLock from './CreatorLock'
 import { LockRowGrid, PhoneLockRowGrid } from './LockStyles'
 import CreatorLockForm from './CreatorLockForm'
 import Errors from '../interface/Errors'
 import Media, { NoPhone, Phone } from '../../theme/media'
-import { createLock } from '../../actions/lock'
-import { hideForm } from '../../actions/lockFormVisibility'
 import { DefaultError } from './FatalError'
 import Loading from '../interface/Loading'
 import { useLocks } from '../../hooks/useLocks'
@@ -19,46 +18,24 @@ import { useLocks } from '../../hooks/useLocks'
  * A wrapper to get the locks via a hook
  * @param {*} param0
  */
-export const CreatorLocksFromHook = ({
-  createLock,
-  formIsVisible,
-  hideForm,
-  account,
-}) => {
-  const { loading, locks: lockFeed, addLock, error } = useLocks(
-    account.address,
-    createLock
-  )
-
-  if (error) {
-    // Show the error
-    return (
-      <DefaultError title={error} critical={false}>
-        {error}
-      </DefaultError>
-    )
-  }
-
+export const CreatorLocksFromHook = ({ formIsVisible, hideForm }) => {
+  const { account, network } = useContext(AuthenticationContext)
   return (
     <CreatorLocks
-      createLock={addLock}
+      account={account}
       formIsVisible={formIsVisible}
       hideForm={hideForm}
-      account={account}
-      loading={loading}
-      lockFeed={lockFeed}
+      network={network}
     />
   )
 }
 CreatorLocksFromHook.propTypes = {
-  account: UnlockPropTypes.account.isRequired,
-  createLock: PropTypes.func.isRequired,
   formIsVisible: PropTypes.bool.isRequired,
   hideForm: PropTypes.func.isRequired,
 }
 
-export const CreatorLocks = (props) => {
-  const { createLock, lockFeed, loading, formIsVisible, hideForm } = props
+export const CreatorLocks = ({ account, network, formIsVisible, hideForm }) => {
+  const { loading, locks, addLock, error } = useLocks(account)
 
   return (
     <Locks>
@@ -78,16 +55,18 @@ export const CreatorLocks = (props) => {
         <CreatorLockForm
           hideAction={hideForm}
           saveLock={async (lock) => {
-            await createLock(lock, hideForm)
+            await addLock(lock, hideForm)
           }}
           pending
         />
       )}
-      {lockFeed.length > 0 &&
-        lockFeed.map((lock) => {
-          return <CreatorLock key={JSON.stringify(lock)} lock={lock} />
+      {locks.length > 0 &&
+        locks.map((lock) => {
+          return (
+            <CreatorLock key={lock.address} lock={lock} network={network} />
+          )
         })}
-      {lockFeed.length === 0 && !loading && !formIsVisible && (
+      {locks.length === 0 && !loading && !formIsVisible && (
         <DefaultError
           title="Create a lock to get started"
           illustration="/static/images/illustrations/lock.svg"
@@ -103,34 +82,12 @@ export const CreatorLocks = (props) => {
 }
 
 CreatorLocks.propTypes = {
-  lockFeed: PropTypes.arrayOf(UnlockPropTypes.lock),
-  createLock: PropTypes.func.isRequired,
+  account: PropTypes.string.isRequired,
+  network: PropTypes.number.isRequired,
   formIsVisible: PropTypes.bool.isRequired,
-  loading: PropTypes.bool,
   hideForm: PropTypes.func.isRequired,
 }
-
-CreatorLocks.defaultProps = {
-  loading: false,
-  lockFeed: [],
-}
-
-const mapDispatchToProps = (dispatch) => ({
-  createLock: (lock) => dispatch(createLock(lock)),
-  hideForm: () => dispatch(hideForm()),
-})
-
-export const mapStateToProps = ({ account, lockFormStatus: { visible } }) => {
-  return {
-    formIsVisible: visible,
-    account,
-  }
-}
-
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps
-)(CreatorLocksFromHook)
+export default CreatorLocksFromHook
 
 const Locks = styled.section`
   display: grid;

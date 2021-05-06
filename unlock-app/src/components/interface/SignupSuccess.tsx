@@ -8,7 +8,9 @@ export const SignupSuccess = () => (
   <div>
     <Heading>Sign Up</Heading>
     <Description>
-      You are now signed in! Visit{' '}
+      You are now signed up! We sent you a{' '}
+      <strong>very important recorvery email</strong>, please do not delete it!
+      Visit{' '}
       <Link href="/settings">
         <a>your settings page</a>
       </Link>
@@ -19,7 +21,7 @@ export const SignupSuccess = () => (
 
 export default SignupSuccess
 
-const Heading = styled.h1`
+export const Heading = styled.h1`
   font-family: 'IBM Plex Sans', sans-serif;
   font-size: 36px;
   line-height: 47px;
@@ -27,7 +29,7 @@ const Heading = styled.h1`
   color: var(--darkgrey);
 `
 
-const Description = styled.p`
+export const Description = styled.p`
   font-family: 'IBM Plex Serif', serif;
   font-weight: 300;
   font-size: 20px;

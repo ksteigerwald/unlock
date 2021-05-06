@@ -1,95 +1,63 @@
-import React from 'react'
-import { useDispatch } from 'react-redux'
-import { providerReady } from '../actions/provider'
-import { waitForWallet, dismissWalletCheck } from '../actions/fullScreenModals'
-import { FATAL_NOT_ENABLED_IN_PROVIDER } from '../errors'
-import { setError } from '../actions/error'
-
-import { Application } from '../utils/Error'
-
-import { ConfigContext } from '../utils/withConfig'
-
-export const Web3ProviderContext = React.createContext({
-  getWeb3Provider: () => {},
-  setWeb3Provider: () => {},
-})
+import { ethers } from 'ethers'
+import { useState } from 'react'
+import { WalletService } from '@unlock-protocol/unlock-js'
 
 export interface EthereumWindow extends Window {
   web3: any
   ethereum: any
 }
-interface Web3ProviderContextType {
-  getWeb3Provider: any
-  setWeb3Provider: any
-}
 
-interface Config {
-  env: string
-  httpProvider: string
-}
+/**
+ * Initializes a provider passed
+ * @param providerAdapter
+ */
+export const useProvider = (config: any) => {
+  const [loading, setLoading] = useState(false)
+  const [walletService, setWalletService] = useState<any>()
+  const [network, setNetwork] = useState<string | undefined>(undefined)
+  const [account, setAccount] = useState<string | undefined>(undefined)
+  const [email, setEmail] = useState<string | undefined>(undefined)
+  const [encryptedPrivateKey, setEncryptedPrivateKey] = useState<
+    any | undefined
+  >(undefined)
 
-export const useProvider = (providerAdapter?: any) => {
-  const config: Config = React.useContext(ConfigContext)
-  const {
-    getWeb3Provider,
-    setWeb3Provider,
-  } = React.useContext<Web3ProviderContextType>(Web3ProviderContext)
-
-  const dispatch = useDispatch()
-
-  const [loading, setLoading] = React.useState(true)
-
-  /**
-   * Function which is called when the App component is rendered.
-   */
-  const initializeProvider = async () => {
-    if (config.env === 'test') {
-      // We set the provider to be the provided by the local ganache
-      setWeb3Provider(`http://${config.httpProvider}:8545`)
-      dispatch(providerReady())
-      setLoading(false)
-      return
+  const connectProvider = async (provider: any, callback: any) => {
+    setLoading(true)
+    if (provider.enable) {
+      try {
+        await provider.enable()
+      } catch {
+        alert('PLEASE ENABLE PROVIDER!')
+      }
     }
 
-    const ethereumWindow = (window as unknown) as EthereumWindow
+    const _walletService = new WalletService(config.networks)
 
-    if (providerAdapter) {
-      // If we are using an "explicit" provider (rather than one which was "injected").
-      setWeb3Provider(providerAdapter)
-      dispatch(providerReady())
-    } else if (ethereumWindow.ethereum) {
-      // If there is an injected provider
-      dispatch(waitForWallet())
-      try {
-        // Request account access if needed
-        await ethereumWindow.ethereum.enable()
-        setWeb3Provider(ethereumWindow.ethereum)
-        dispatch(providerReady())
-      } catch (error) {
-        dispatch(setError(Application.Fatal(FATAL_NOT_ENABLED_IN_PROVIDER)))
-      }
-      dispatch(dismissWalletCheck())
-    } else if (ethereumWindow.web3) {
-      // Legacy web3 wallet/browser (should we keep supporting?)
-      setWeb3Provider(ethereumWindow.web3.currentProvider)
-      dispatch(providerReady())
-    } else {
-      // Hum. No provider!
-      // TODO: Let's let the user pick one up from the UI (including the unlock provider!)
+    // walletService wants an ethers provider
+    const _network = await _walletService.connect(
+      new ethers.providers.Web3Provider(provider)
+    )
+    setNetwork(_network || undefined)
+
+    const _account = await _walletService.getAccount()
+    setWalletService(_walletService)
+    setAccount(_account || undefined)
+    setEmail(provider.emailAddress)
+    setEmail(provider.emailAddress)
+    setEncryptedPrivateKey(provider.passwordEncryptedPrivateKey)
+    if (callback) {
+      callback(_account)
     }
     setLoading(false)
   }
 
-  React.useEffect(() => {
-    const provider = getWeb3Provider()
-    if (provider) {
-      // The context already has a provider, we're ready to work
-      setLoading(false)
-    } else {
-      // Try to initalize the provider if there isn't one already
-      initializeProvider()
-    }
-  }, [])
-
-  return { provider: getWeb3Provider(), loading }
+  return {
+    loading,
+    network,
+    account,
+    email,
+    encryptedPrivateKey,
+    walletService,
+    connectProvider,
+  }
 }

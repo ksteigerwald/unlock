@@ -1,31 +1,19 @@
-import React from 'react'
+import React, { useState, useContext } from 'react'
 import PropTypes from 'prop-types'
-import { connect } from 'react-redux'
+import { useLock } from '../../../../hooks/useLock'
 
 import Svg from '../../svg'
 import Button from '../Button'
 import DisabledButton from '../DisabledButton'
 import UnlockPropTypes from '../../../../propTypes'
-import { withdrawFromLock } from '../../../../actions/lock'
+import { AuthenticationContext } from '../../Authenticate'
 
-export const Withdraw = ({
-  lock,
-  withdrawalTransaction,
-  withdraw,
-  account,
-  ...props
-}) => {
-  if (lock.balance > 0 && !withdrawalTransaction) {
+export const Withdraw = ({ withdraw, lock, ...props }) => {
+  const { network } = useContext(AuthenticationContext)
+
+  if (lock.balance > 0) {
     return (
-      <Button
-        label="Withdraw"
-        action={() => {
-          if (lock.balance > 0) {
-            withdraw(lock)
-          }
-        }}
-        {...props}
-      >
+      <Button label="Withdraw" action={withdraw} {...props}>
         <Svg.Withdraw name="Withdraw" />
       </Button>
     )
@@ -39,19 +27,7 @@ export const Withdraw = ({
 
 Withdraw.propTypes = {
   lock: UnlockPropTypes.lock.isRequired,
-  withdrawalTransaction: UnlockPropTypes.transaction,
-  withdraw: PropTypes.func,
-  account: UnlockPropTypes.account,
+  withdraw: PropTypes.func.isRequired,
 }
 
-Withdraw.defaultProps = {
-  withdrawalTransaction: null,
-  account: null,
-  withdraw: () => {},
-}
-
-const mapDispatchToProps = (dispatch) => ({
-  withdraw: (lock) => dispatch(withdrawFromLock(lock)),
-})
-
-export default connect(null, mapDispatchToProps)(Withdraw)
+export default Withdraw

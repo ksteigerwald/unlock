@@ -1,15 +1,15 @@
 import { useEffect, useState, useContext } from 'react'
-import { useDispatch } from 'react-redux'
-import { useQuery } from '@apollo/react-hooks'
 import { expirationAsDate } from '../utils/durations'
-import keyHolderQuery from '../queries/keyholdersByLock'
+
 import generateKeyTypedData from '../structured_data/keyMetadataTypedData'
 import { WalletServiceContext } from '../utils/withWalletService'
 import { StorageServiceContext } from '../utils/withStorageService'
 import { generateColumns } from '../utils/metadataMunging'
 import { MemberFilters } from '../unlockTypes'
-import { waitForWallet, dismissWalletCheck } from '../actions/fullScreenModals'
 import { Web3ServiceContext } from '../utils/withWeb3Service'
+import { GraphServiceContext } from '../utils/withGraphService'
+import { AuthenticationContext } from '../components/interface/Authenticate'
+import { ConfigContext } from '../utils/withConfig'
 
 /**
  * Helper function to retrieve metadata for a all keys on a lock
@@ -17,14 +17,12 @@ import { Web3ServiceContext } from '../utils/withWeb3Service'
  * @param {string} viewer
  * @param {*} walletService
  * @param {*} storageService
- * @param {*} dispatch
  */
 export const getAllKeysMetadataForLock = async (
   lock,
   viewer,
   walletService,
-  storageService,
-  dispatch
+  storageService
 ) => {
   return new Promise((resolve, reject) => {
     // If the user is the owner, we can grab the metadata for each lock
@@ -36,9 +34,7 @@ export const getAllKeysMetadataForLock = async (
       },
     })
 
-    dispatch(waitForWallet())
     walletService.signData(viewer, typedData, async (error, signature) => {
-      dispatch(dismissWalletCheck())
       if (error) {
         reject('Could not sign typed data for metadata request.')
       }
@@ -54,25 +50,25 @@ export const getAllKeysMetadataForLock = async (
 
 /**
  * Helper function which combines the members and their metadata
- * @param {*} lock
+ * @param {*} lockWithKeys
  * @param {*} storedMetadata
  */
-export const buildMembersWithMetadata = (lock, storedMetadata) => {
-  let members = {}
+export const buildMembersWithMetadata = (lockWithKeys, storedMetadata) => {
+  const members = {}
   const metadataByKeyOwner = storedMetadata.reduce((byKeyOwner, key) => {
     return {
       ...byKeyOwner,
       [key.userAddress.toLowerCase()]: key.data.userMetadata,
     }
   }, {})
-  lock.keys.forEach((key) => {
+  lockWithKeys.keys.forEach((key) => {
     const keyOwner = key.owner.address.toLowerCase()
-    const index = `${lock.address}-${keyOwner}`
+    const index = `${lockWithKeys.address}-${keyOwner}`
     let member = members[index]
     if (!member) {
       member = {
         token: key.keyId,
-        lockName: lock.name,
+        lockName: lockWithKeys.name,
         expiration: expirationAsDate(parseInt(key.expiration)),
         keyholderAddress: keyOwner,
       }
@@ -93,10 +89,7 @@ export const buildMembersWithMetadata = (lock, storedMetadata) => {
       }
     }
 
-    members = {
-      ...members,
-      [index]: member,
-    }
+    members[index] = member
   })
   return members
 }
@@ -106,65 +99,70 @@ export const buildMembersWithMetadata = (lock, storedMetadata) => {
  * @param {*} address
  */
 export const useMembers = (lockAddresses, viewer, filter, page = 0) => {
+  const { network } = useContext(AuthenticationContext)
+  const config = useContext(ConfigContext)
   const walletService = useContext(WalletServiceContext)
   const web3Service = useContext(Web3ServiceContext)
   const storageService = useContext(StorageServiceContext)
-  const dispatch = useDispatch()
+  const graphService = useContext(GraphServiceContext)
+
+  graphService.connect(config.networks[network].subgraphURI)
   const [hasNextPage, setHasNextPage] = useState(false)
   const [members, setMembers] = useState({})
   const [error, setError] = useState(false)
   const [loading, setLoading] = useState(true)
-  let expiresAfter = parseInt(new Date().getTime() / 1000)
-  if (filter === MemberFilters.ALL) {
-    expiresAfter = 0
-  }
-  const first = 100
-  const skip = page * first
 
-  const {
-    loading: membersLoading,
-    error: membersError,
-    data: keyHolders,
-  } = useQuery(keyHolderQuery(), {
-    variables: {
-      addresses: lockAddresses,
+  const loadMembers = async () => {
+    setLoading(true)
+
+    let expiresAfter = parseInt(new Date().getTime() / 1000)
+    if (filter === MemberFilters.ALL) {
+      expiresAfter = 0
+    }
+    const first = 100
+    const skip = page * first
+
+    const { data } = await graphService.keysByLocks(
+      lockAddresses,
       expiresAfter,
       first,
-      skip,
-    },
-  })
+      skip
+    )
 
-  const loadMetadataAndForKeyHolders = async () => {
-    if (!keyHolders || !keyHolders.locks) {
-      return
-    }
-    setLoading(true)
-    const membersForLocksPromise = keyHolders.locks.map(async (lock) => {
+    const membersForLocksPromise = data.locks.map(async (lockWithKeys) => {
       // If the viewer is not the lock owner, just show the members from chain
       const isLockManager = await web3Service.isLockManager(
-        lock.address,
-        viewer
+        lockWithKeys.address,
+        viewer,
+        network
       )
       if (!isLockManager) {
-        return buildMembersWithMetadata(lock, [])
+        return buildMembersWithMetadata(lockWithKeys, [])
       }
       try {
         const storedMetadata = await getAllKeysMetadataForLock(
-          lock,
+          lockWithKeys,
           viewer,
           walletService,
-          storageService,
-          dispatch
+          storageService
         )
-        return buildMembersWithMetadata(lock, storedMetadata)
+        return buildMembersWithMetadata(lockWithKeys, storedMetadata)
       } catch (error) {
         setError(`Could not list members - ${error}`)
         return []
       }
     })
-    const membersForLocks = await Promise.all(membersForLocksPromise)
-    const members = Object.assign(...membersForLocks)
-    if (membersForLocks.length > 0) {
+    const membersByLock = await Promise.all(membersForLocksPromise)
+    const members = Object.values(
+      membersByLock.reduce((acc, array) => {
+        return {
+          ...acc,
+          ...array,
+        }
+      }, {})
+    )
+
+    if (members.length > 0) {
       setMembers(members)
       setHasNextPage(Object.keys(members).length === first)
     }
@@ -172,25 +170,11 @@ export const useMembers = (lockAddresses, viewer, filter, page = 0) => {
   }
 
   /**
-   * set loading while keyHolderQuery is loading
-   */
-  useEffect(() => {
-    setLoading(membersLoading)
-  }, [membersLoading])
-
-  /**
-   * set error if keyHolderQuery yields an error
-   */
-  useEffect(() => {
-    setError(membersError)
-  }, [membersError])
-
-  /**
    * When the keyHolders object changes, load the metadata
    */
   useEffect(() => {
-    loadMetadataAndForKeyHolders()
-  }, [JSON.stringify(keyHolders)])
+    loadMembers()
+  }, [lockAddresses, viewer, filter, page])
 
   const list = Object.values(members)
   const columns = generateColumns(list)

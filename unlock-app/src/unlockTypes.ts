@@ -49,11 +49,6 @@ export interface Account {
 export interface Network {
   name: number // TODO: This is very misleading, change property name to id
 }
-
-export interface ChainExplorerURLBuilders {
-  [site: string]: (address: string) => string
-}
-
 export interface Loading {
   loading: number
 }
@@ -89,6 +84,8 @@ export interface PaywallCallToAction {
   confirmed: string
   noWallet: string
   metadata: string
+  card: string
+  [name: string]: string
 }
 
 export interface PaywallConfigLocks {
@@ -96,7 +93,8 @@ export interface PaywallConfigLocks {
 }
 
 export interface PaywallConfigLock {
-  name: string
+  name?: string
+  metadataInputs?: MetadataInput[]
 }
 
 export enum KeyStatus {
@@ -182,11 +180,13 @@ export interface MetadataInput {
 export interface PaywallConfig {
   icon?: string
   unlockUserAccounts?: true | 'true' | false
-  callToAction: PaywallCallToAction
+  callToAction?: PaywallCallToAction
   locks: PaywallConfigLocks
   metadataInputs?: MetadataInput[]
   persistentCheckout?: boolean
   useDelegatedProvider?: boolean
+  network: number
+  referrer?: string
 }
 
 export interface RawLock {

@@ -1,7 +1,8 @@
 import React, { useContext } from 'react'
 import styled from 'styled-components'
 import { WalletService } from '@unlock-protocol/unlock-js'
-import useGetMetadataFor from '../../../hooks/useGetMetadataFor'
+import { AuthenticationContext } from '../Authenticate'
+// import useGetMetadataFor from '../../../hooks/useGetMetadataFor'
 import useMarkAsCheckedIn from '../../../hooks/useMarkAsCheckedIn'
 import { pingPoap } from '../../../utils/poap'
 import { OwnedKey } from '../keychain/KeychainTypes'
@@ -132,19 +133,25 @@ export const ValidKey = ({
 }: ValidKeyProps) => {
   const walletService: WalletService = useContext(WalletServiceContext)
   const config = useContext(ConfigContext)
+  const { network } = useContext(AuthenticationContext)
 
   const { isLockManager, loading: isLockManagerLoading } = useIsLockManager(
     ownedKey.lock.address,
+    network,
     viewer
   )
+  const loading = false
+  const metadata = {}
+  const getMetadataForError = ''
 
-  const { loading, metadata, error: getMetadataForError } = useGetMetadataFor(
-    walletService,
-    config,
-    ownedKey.lock.address,
-    ownedKey.keyId,
-    isLockManager
-  )
+  // TODO add back metadata when the logged in user is lock manager!
+  // const { loading, metadata, error: getMetadataForError } = useGetMetadataFor(
+  //   walletService,
+  //   config,
+  //   ownedKey.lock.address,
+  //   ownedKey.keyId,
+  //   isLockManager
+  // )
 
   const {
     markAsCheckedIn,
@@ -167,7 +174,12 @@ export const ValidKey = ({
 
   if (getMetadataForError || markAsCheckedInError) {
     // TODO: Do better
-    return <p>There was an error.</p>
+    return (
+      <p>
+        There was an error:{' '}
+        {getMetadataForError.toString() || markAsCheckedInError.toString()}
+      </p>
+    )
   }
 
   return (

@@ -1,8 +1,6 @@
 FROM node:14.0.0-alpine
 LABEL Unlock <ops@unlock-protocol.com>
 
-RUN npm install -g npm@6.4.1 yarn
-
 RUN mkdir /home/unlock
 RUN mkdir /home/unlock/scripts
 RUN chown -R node /home/unlock
@@ -31,7 +29,7 @@ RUN apk add --no-cache --virtual .build-deps \
     py-pip \
     build-base \
     && pip install --no-cache-dir virtualenv \
-    && SKIP_SERVICES=true yarn --production \
+    && SKIP_SERVICES=true yarn \
     && apk del .build-deps \
     && apk add bash
 

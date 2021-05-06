@@ -4,8 +4,40 @@
         <description><![CDATA[News and updates from the Web's new business model.]]></description>
         <link>https://unlock-protocol.com/blog</link>
         <generator>Unlock Blog Engine</generator>
-        <lastBuildDate>Wed, 16 Dec 2020 03:21:27 GMT</lastBuildDate>
+        <lastBuildDate>Fri, 09 Apr 2021 21:34:41 GMT</lastBuildDate>
         <atom:link href="https://unlock-protocol.com/static/blog.rss" rel="self" type="application/rss+xml"/>
+        <item>
+            <title><![CDATA[r0se]]></title>
+            <description><![CDATA[Artist uses XDAI blockchain and Unlock Protocol to explore new, inclusive ways of distributing their art to a global audience.]]></description>
+            <link>https://unlock-protocol.com/blog/new-art-project-nft</link>
+            <guid isPermaLink="true">https://unlock-protocol.com/blog/new-art-project-nft</guid>
+            <dc:creator><![CDATA[Patrick Gerard]]></dc:creator>
+            <pubDate>Fri, 09 Apr 2021 04:00:00 GMT</pubDate>
+        </item>
+        <item>
+            <title><![CDATA[Introducing Swordy Bot]]></title>
+            <description><![CDATA[Thanks to the Unlock developer community, you can now use Unlock in Discord.]]></description>
+            <link>https://unlock-protocol.com/blog/swordy-bot-intro</link>
+            <guid isPermaLink="true">https://unlock-protocol.com/blog/swordy-bot-intro</guid>
+            <dc:creator><![CDATA[Patrick Gallagher]]></dc:creator>
+            <pubDate>Mon, 29 Mar 2021 04:00:00 GMT</pubDate>
+        </item>
+        <item>
+            <title><![CDATA[Support for WalletConnect]]></title>
+            <description><![CDATA[We have added Wallet Connect to all Unlock dapps! You can now connect to your dashboard or unlock memberships in your favorite applications from any web browser!]]></description>
+            <link>https://unlock-protocol.com/blog/wallet-connect-support</link>
+            <guid isPermaLink="true">https://unlock-protocol.com/blog/wallet-connect-support</guid>
+            <dc:creator><![CDATA[Julien Genestoux]]></dc:creator>
+            <pubDate>Wed, 17 Mar 2021 04:00:00 GMT</pubDate>
+        </item>
+        <item>
+            <title><![CDATA[XDAI]]></title>
+            <description><![CDATA[Over the last few weeks, we heard many Unlock users who are complaining about very high gas prices on the Ethereum mainnet. Many of them have asked for xDAI support!]]></description>
+            <link>https://unlock-protocol.com/blog/xdai</link>
+            <guid isPermaLink="true">https://unlock-protocol.com/blog/xdai</guid>
+            <dc:creator><![CDATA[Julien Genestoux]]></dc:creator>
+            <pubDate>Mon, 08 Mar 2021 05:00:00 GMT</pubDate>
+        </item>
         <item>
             <title><![CDATA[Launching Unlock Discount Tokens]]></title>
             <description><![CDATA[As an open protocol for memberships, we want Unlock to belong to its users. Today we are introducing the protocol's native token.]]></description>

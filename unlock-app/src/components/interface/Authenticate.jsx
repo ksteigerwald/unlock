@@ -1,147 +1,157 @@
-import React, { useContext } from 'react'
-import { connect } from 'react-redux'
-import PropTypes from 'prop-types'
+import React, { createContext, useContext, useState, useMemo } from 'react'
+import ApolloClient from 'apollo-boost'
+import PropTypes, { number } from 'prop-types'
+import { ApolloProvider } from '@apollo/react-hooks'
+import { Web3Service, WalletService } from '@unlock-protocol/unlock-js'
+import { StorageServiceContext } from '../../utils/withStorageService'
+import { StorageService } from '../../services/storageService'
+import { Web3ServiceContext } from '../../utils/withWeb3Service'
+import { WalletServiceContext } from '../../utils/withWalletService'
+import { GraphServiceContext } from '../../utils/withGraphService'
+import { GraphService } from '../../services/graphService'
+import ProviderContext from '../../contexts/ProviderContext'
+
 import { useProvider } from '../../hooks/useProvider'
 import Loading from './Loading'
 import {
-  WrongNetwork,
-  MissingProvider,
   NotEnabledInProvider,
+  NetworkNotSupported,
+  WrongNetwork,
 } from '../creator/FatalError'
-import { ETHEREUM_NETWORKS_NAMES } from '../../constants'
 import { ConfigContext } from '../../utils/withConfig'
 import UnlockPropTypes from '../../propTypes'
 
-import Error from '../../utils/Error'
 import LogInSignUp from './LogInSignUp'
 
+const GraphServiceProvider = GraphServiceContext.Provider
+
+const StorageServiceProvider = StorageServiceContext.Provider
+const Web3ServiceProvider = Web3ServiceContext.Provider
+
+export const AuthenticationContext = createContext()
+
 /**
- * A basic component which ensures that
- * 1. there is a provider
- * 2. an account is available
- * 3. the user is on the correct network
- *
- * If no provider is available, and if the component allows for it, we let the user login
- * If no provider is available and the component does not allow for it, we show the missing provider
- * error
- * TODO: add support for web3Modal!
- *
- * If a provider exists but no account is there, we show a message indicating to the user that
- * they need to enable wallet in their provider
- *
- * If the user is on the wrong network, we show a message indicating that the need to switch to the
- * correct network
- *
- * If everything is fine, we render the children!
- * All descendant can then access the provider from the hook (mostly to sign and/or send transactions)
- * or the account
+ * Utility providers set to retrieve content based on network settings
+ * @returns
  */
+const Providers = ({ network, networkConfig, children }) => {
+  const apolloClient = useMemo(
+    () =>
+      new ApolloClient({
+        uri: networkConfig[network].subgraphURI,
+      }),
+    [networkConfig, network]
+  )
+
+  const graphService = useMemo(
+    () => new GraphService(networkConfig[network].subgraphURI),
+    [networkConfig, network]
+  )
+
+  const storageService = useMemo(
+    () => new StorageService(networkConfig[network].locksmith),
+    [networkConfig, network]
+  )
+
+  const web3Service = useMemo(() => {
+    return new Web3Service(networkConfig)
+  }, [networkConfig])
+
+  return (
+    <ApolloProvider client={apolloClient}>
+      <StorageServiceProvider value={storageService}>
+        <Web3ServiceProvider value={web3Service}>
+          <GraphServiceProvider value={graphService}>
+            {children}
+          </GraphServiceProvider>
+        </Web3ServiceProvider>
+      </StorageServiceProvider>
+    </ApolloProvider>
+  )
+}
+
+Providers.propTypes = {
+  network: number,
+  // networkConfig: object.isRequired,
+}
+
+Providers.defaultProps = {
+  network: 1, // defaults to mainnet (can we change this?)
+}
 
 export const Authenticate = ({
   children,
   unlockUserAccount,
-  account,
-  network,
-  config,
-  provider,
-  loading,
+  requiredNetwork,
+  optional,
+  onCancel,
+  embedded,
+  onAuthenticated,
+  providerAdapter,
 }) => {
-  // Loading the provider
-  if (loading) {
-    return <Loading />
-  }
+  const config = useContext(ConfigContext)
+  const { setProvider } = useContext(ProviderContext)
 
-  // No provider
-  if (!provider) {
-    if (!unlockUserAccount) {
-      return <MissingProvider />
+  const {
+    loading,
+    network,
+    account,
+    email,
+    encryptedPrivateKey,
+    walletService,
+    connectProvider,
+  } = useProvider(config)
+
+  const authenticate = (provider, callback) => {
+    if (!provider) {
+      if (providerAdapter) {
+        setProvider(providerAdapter)
+        connectProvider(providerAdapter, callback)
+        return
+      }
     }
-    return <LogInSignUp login />
+    connectProvider(provider, callback)
   }
 
-  // No account
-  if (!account) {
-    // No account, but we have a provider.
-    // Let's ask the user to check their wallet!
-    return <NotEnabledInProvider />
-  }
-
-  // Wrong network
-  if (network.name !== config.requiredNetworkId) {
-    const currentNetwork = ETHEREUM_NETWORKS_NAMES[network.name]
-      ? ETHEREUM_NETWORKS_NAMES[network.name][0]
-      : 'Unknown Network'
-
-    return (
-      <WrongNetwork
-        currentNetwork={currentNetwork}
-        requiredNetworkId={config.requiredNetworkId}
-      />
-    )
-  }
-
-  // All good!
-  return children
+  return (
+    <AuthenticationContext.Provider
+      value={{ account, network, email, encryptedPrivateKey, authenticate }}
+    >
+      <WalletServiceContext.Provider value={walletService}>
+        <Providers
+          network={requiredNetwork || network}
+          networkConfig={config.networks}
+          account={account}
+          email={email}
+          encryptedPrivateKey={encryptedPrivateKey}
+        >
+          {children}
+        </Providers>
+      </WalletServiceContext.Provider>
+    </AuthenticationContext.Provider>
+  )
 }
 
 Authenticate.propTypes = {
   children: PropTypes.node.isRequired,
-  config: UnlockPropTypes.configuration.isRequired,
-  // eslint-disable-next-line react/forbid-prop-types
-  provider: PropTypes.object,
-  loading: PropTypes.bool.isRequired,
   unlockUserAccount: PropTypes.bool,
-  account: UnlockPropTypes.account,
-  network: UnlockPropTypes.network,
+  requiredNetwork: PropTypes.string,
+  optional: PropTypes.bool,
+  onCancel: PropTypes.func,
+  embedded: PropTypes.bool,
+  onAuthenticated: PropTypes.func,
+  // eslint-disable-next-line react/forbid-prop-types
+  providerAdapter: PropTypes.object,
 }
 
 Authenticate.defaultProps = {
   unlockUserAccount: false,
-  account: null,
-  network: null,
-  provider: null,
+  requiredNetwork: null,
+  optional: false,
+  onCancel: null,
+  embedded: false,
+  onAuthenticated: () => {},
+  providerAdapter: null,
 }
 
-export const AuthenticateWithHooks = ({
-  children,
-  unlockUserAccount,
-  account,
-  network,
-}) => {
-  const config = useContext(ConfigContext)
-  const { provider, loading } = useProvider()
-  return (
-    <Authenticate
-      unlockUserAccount={unlockUserAccount}
-      account={account}
-      network={network}
-      config={config}
-      provider={provider}
-      loading={loading}
-    >
-      {children}
-    </Authenticate>
-  )
-}
-
-AuthenticateWithHooks.propTypes = {
-  children: PropTypes.node.isRequired,
-  unlockUserAccount: PropTypes.bool,
-  account: UnlockPropTypes.account,
-  network: UnlockPropTypes.network,
-}
-
-AuthenticateWithHooks.defaultProps = {
-  unlockUserAccount: false,
-  account: null,
-  network: null,
-}
-
-export const mapStateToProps = ({ account, network }) => {
-  return {
-    account,
-    network,
-  }
-}
-
-export default connect(mapStateToProps)(AuthenticateWithHooks)
+export default Authenticate

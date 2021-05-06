@@ -1,55 +1,83 @@
 import styled from 'styled-components'
-import React from 'react'
-import { connect } from 'react-redux'
+import React, { useContext, useState } from 'react'
+
 import Head from 'next/head'
 import PropTypes from 'prop-types'
+import { AuthenticationContext } from '../interface/Authenticate'
 import UnlockPropTypes from '../../propTypes'
 import Layout from '../interface/Layout'
 import Account from '../interface/Account'
 import CreatorLocks from '../creator/CreatorLocks'
 import BrowserOnly from '../helpers/BrowserOnly'
 import { pageTitle } from '../../constants'
+import LoginPrompt from '../interface/LoginPrompt'
+
 import {
   CreateLockButton,
   CancelCreateLockButton,
   AccountWrapper,
 } from '../interface/buttons/ActionButton'
-import { showForm, hideForm } from '../../actions/lockFormVisibility'
 import { Phone } from '../../theme/media'
-import Authenticate from '../interface/Authenticate'
 
-export const DashboardContent = ({
-  account,
-  network,
-  formIsVisible,
-  showForm,
-  hideForm,
-}) => {
+const ButtonToCreateLock = ({ formIsVisible, toggleForm }) => {
+  const { account } = useContext(AuthenticationContext)
+
+  return (
+    <>
+      {formIsVisible && (
+        <CancelCreateLockButton id="CreateLockButton" onClick={toggleForm}>
+          Cancel Lock
+        </CancelCreateLockButton>
+      )}
+      {!formIsVisible && (
+        <CreateLockButton
+          disabled={!account}
+          id="CreateLockButton"
+          onClick={toggleForm}
+        >
+          Create Lock
+        </CreateLockButton>
+      )}
+    </>
+  )
+}
+
+ButtonToCreateLock.propTypes = {
+  formIsVisible: PropTypes.bool,
+  toggleForm: PropTypes.func.isRequired,
+}
+
+ButtonToCreateLock.defaultProps = {
+  formIsVisible: false,
+}
+
+export const DashboardContent = () => {
+  const { account } = useContext(AuthenticationContext)
+
+  const [formIsVisible, setFormIsVisible] = useState(false)
   const toggleForm = () => {
-    formIsVisible ? hideForm() : showForm()
+    formIsVisible ? setFormIsVisible(false) : setFormIsVisible(true)
   }
+  const hideForm = () => {
+    setFormIsVisible(false)
+  }
+
   return (
     <Layout title="Creator Dashboard">
       <Head>
         <title>{pageTitle('Dashboard')}</title>
       </Head>
-      <Authenticate>
+      {!account && (
+        <LoginPrompt details="In order to deploy locks, we require the use of your own crypto wallet." />
+      )}
+      {account && (
         <BrowserOnly>
           <AccountWrapper>
-            <Account network={network} account={account} />
-            {formIsVisible && (
-              <CancelCreateLockButton
-                id="CreateLockButton"
-                onClick={toggleForm}
-              >
-                Cancel Lock
-              </CancelCreateLockButton>
-            )}
-            {!formIsVisible && (
-              <CreateLockButton id="CreateLockButton" onClick={toggleForm}>
-                Create Lock
-              </CreateLockButton>
-            )}
+            <Account />
+            <ButtonToCreateLock
+              toggleForm={toggleForm}
+              formIsVisible={formIsVisible}
+            />
           </AccountWrapper>
           <Phone>
             <Warning>
@@ -58,43 +86,14 @@ export const DashboardContent = ({
             </Warning>
           </Phone>
 
-          <CreatorLocks />
+          <CreatorLocks hideForm={hideForm} formIsVisible={formIsVisible} />
         </BrowserOnly>
-      </Authenticate>
+      )}
     </Layout>
   )
 }
 
-DashboardContent.propTypes = {
-  account: UnlockPropTypes.account,
-  network: UnlockPropTypes.network.isRequired,
-  formIsVisible: PropTypes.bool.isRequired,
-  showForm: PropTypes.func.isRequired,
-  hideForm: PropTypes.func.isRequired,
-}
-
-DashboardContent.defaultProps = {
-  account: null,
-}
-
-export const mapStateToProps = ({
-  account,
-  network,
-  lockFormStatus: { visible },
-}) => {
-  return {
-    account,
-    network,
-    formIsVisible: visible,
-  }
-}
-
-const mapDispatchToProps = (dispatch) => ({
-  showForm: () => dispatch(showForm()),
-  hideForm: () => dispatch(hideForm()),
-})
-
-export default connect(mapStateToProps, mapDispatchToProps)(DashboardContent)
+export default DashboardContent
 
 const Warning = styled.p`
   border: 1px solid var(--red);
